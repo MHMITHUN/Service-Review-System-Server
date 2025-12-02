@@ -3,7 +3,7 @@
 RESTful API server for the Service Review platform, built with Node.js, Express, and MongoDB.
 
 ## 🌐 Live URL
-[Server API](https://your-vercel-url.vercel.app)
+[Server API](https://service-review-system-server-wheat.vercel.app)
 
 ## 📋 Purpose
 Backend API that powers the Service Review platform, handling authentication, service management, reviews, and statistics with JWT-based security.
