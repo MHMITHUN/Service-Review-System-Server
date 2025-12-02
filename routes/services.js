@@ -13,20 +13,61 @@ router.get('/', async (req, res) => {
         const db = getDB();
         const servicesCollection = db.collection('services');
 
-        let query = {};
+        let pipeline = [];
 
-        // Category filter
+        // 1. Match stage (Filter by category)
         if (category && category !== 'all') {
-            query.category = category;
+            pipeline.push({
+                $match: { category: category }
+            });
         }
 
-        let services = await servicesCollection.find(query).toArray();
+        // 2. Convert _id to string for lookup matching
+        pipeline.push({
+            $addFields: {
+                serviceIdString: { $toString: '$_id' }
+            }
+        });
 
-        // Fuzzy search if search query exists
+        // 3. Lookup reviews to calculate rating and count
+        pipeline.push({
+            $lookup: {
+                from: 'reviews',
+                localField: 'serviceIdString',
+                foreignField: 'serviceId',
+                as: 'reviews'
+            }
+        });
+
+        // 3. Add fields for average rating and review count
+        pipeline.push({
+            $addFields: {
+                reviewCount: { $size: '$reviews' },
+                averageRating: {
+                    $cond: {
+                        if: { $gt: [{ $size: '$reviews' }, 0] },
+                        then: { $avg: '$reviews.rating' },
+                        else: 0
+                    }
+                }
+            }
+        });
+
+        // 4. Project to remove the heavy reviews array but keep the stats
+        pipeline.push({
+            $project: {
+                reviews: 0
+            }
+        });
+
+        // Execute aggregation
+        let services = await servicesCollection.aggregate(pipeline).toArray();
+
+        // Fuzzy search if search query exists (done in memory for now as Fuse.js is better for this than simple regex)
         if (search) {
             const fuse = new Fuse(services, {
                 keys: ['title', 'company', 'category', 'description'],
-                threshold: 0.3, // Lower is stricter, higher is looser
+                threshold: 0.3,
                 includeScore: true
             });
 

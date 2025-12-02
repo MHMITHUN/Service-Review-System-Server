@@ -5,6 +5,24 @@ import { ObjectId } from 'mongodb';
 
 const router = express.Router();
 
+// Get recent reviews for home page
+router.get('/recent', async (req, res) => {
+    try {
+        const db = getDB();
+        const reviewsCollection = db.collection('reviews');
+
+        // Fetch last 3 reviews, sorted by creation date
+        const reviews = await reviewsCollection.find({})
+            .sort({ createdAt: -1 })
+            .limit(3)
+            .toArray();
+
+        res.json(reviews);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching recent reviews', error: error.message });
+    }
+});
+
 // Get reviews for a specific service
 router.get('/service/:serviceId', async (req, res) => {
     try {
