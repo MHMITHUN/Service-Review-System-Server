@@ -2,6 +2,7 @@ import express from 'express';
 import { getDB } from '../config/db.js';
 import { verifyToken } from '../middleware/verifyToken.js';
 import { ObjectId } from 'mongodb';
+import Fuse from 'fuse.js';
 
 const router = express.Router();
 
@@ -14,17 +15,25 @@ router.get('/', async (req, res) => {
 
         let query = {};
 
-        // Search functionality
-        if (search) {
-            query.$text = { $search: search };
-        }
-
         // Category filter
         if (category && category !== 'all') {
             query.category = category;
         }
 
-        const services = await servicesCollection.find(query).toArray();
+        let services = await servicesCollection.find(query).toArray();
+
+        // Fuzzy search if search query exists
+        if (search) {
+            const fuse = new Fuse(services, {
+                keys: ['title', 'company', 'category', 'description'],
+                threshold: 0.3, // Lower is stricter, higher is looser
+                includeScore: true
+            });
+
+            const result = fuse.search(search);
+            services = result.map(res => res.item);
+        }
+
         res.json(services);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching services', error: error.message });
