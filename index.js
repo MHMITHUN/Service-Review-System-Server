@@ -42,7 +42,21 @@ app.use((err, req, res, next) => {
 
 // Connect to database and start server
 connectDB().then(() => {
-    app.listen(PORT, () => {
-        console.log(`🚀 Server is running on port ${PORT}`);
-    });
+    const startServer = (port) => {
+        const server = app.listen(port, () => {
+            console.log(`🚀 Server is running on port ${port}`);
+            console.log(`📡 API URL: http://localhost:${port}`);
+            console.log('');
+        }).on('error', (err) => {
+            if (err.code === 'EADDRINUSE') {
+                console.log(`⚠️  Port ${port} is busy, trying port ${port + 1}...`);
+                startServer(port + 1);
+            } else {
+                console.error('❌ Server error:', err);
+                process.exit(1);
+            }
+        });
+    };
+
+    startServer(PORT);
 });
